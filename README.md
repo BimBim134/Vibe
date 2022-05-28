@@ -59,7 +59,7 @@ in transmit mode, there's two main phases :
 
 During the image processing phase, the image is first crop in square format and resized to a very small 200x200. anything bigger would have been too long to transmit. And frankly, small image are kinda fun.
 
-Next step is dithering dithering. I choosed the Atkinson algorithm because it tends to be way more robust than any other algorithm. I try to use only 4 color But see for yourself :
+Next step is dithering dithering. I choosed the Atkinson algorithm because it tends to be way more robust than any other algorithm. I tried every algorithms while using only 4 color but see for yourself :
 
 here are the references images :
 ![reference images](https://i.imgur.com/uaXxVlh.png)
