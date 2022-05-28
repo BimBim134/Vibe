@@ -1,0 +1,5 @@
+scikit-image==0.19.2
+numpy==1.21.5
+scipy==1.8.0
+scikit-commpy==0.7.0
+SoundFile==0.10.3.post1
