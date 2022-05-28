@@ -35,7 +35,7 @@ I'm a student interested about everything telecom and espacially radio communica
 
 I rapidly wanted to try to find a new way to send picture in a more effective way using more modern technique than SSTV. I explored lots of different modulation technique, ways of compressing image etc...
 
-I finally started making experiment and I converged on what would be the base of Vibe : *2-bit color palette and QPSK modulation*.
+I finally started making experiment and I converged on what would be the base of Vibe : *2-bit color palette, Atkinson dithering and QPSK modulation*.
 
 ![2 bit color palette](https://i.imgur.com/daqP9Z5.jpg)
 ![QPSK](https://i.imgur.com/MudBpNx.png)
