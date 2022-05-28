@@ -9,7 +9,7 @@ It started as an experiment, and here's my very first python program ! It may be
 
 first :
     
-    git clone this.repo
+    git clone https://github.com/BimBim134/Vibe
     chmod +x vibe.py
 
 then :
