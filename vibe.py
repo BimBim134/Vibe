@@ -16,7 +16,7 @@ def doc():
         ">> ./vibe.py -tx -s <input_image_name> <output_soundFile_name> \n\n"
         
         "decode a QPSK sound signal to image \n"
-        ">> ./vibe.py -rx <input_soundFile_name> <image_name> \n\n"
+        ">> ./vibe.py -rx <input_soundFile_name> <image_name> <center_frequency (optionnal)> \n\n"
         
         "help ! \n"
         ">> ./vibe.py -help \n\n")
@@ -155,7 +155,6 @@ def im2bin(dithered_image):
     return output
 
 #..............................................................................
-
 
 def framing(binaries):
     # freq and time synchronisation
@@ -406,13 +405,23 @@ if __name__ == "__main__":
         
         else:
             doc()
-            
+    
+    # decode a QPSK sound signal to image
     elif sys.argv[1] == '-rx':
-        dem_signal = demodulate(sys.argv[2], 1800, 1001, 32, 16)
+    
+        try:
+            if sys.argv[4]:
+                print('central frequency set to : {}Hz'.format(sys.argv[4]))
+                dem_signal = demodulate(sys.argv[2],
+                                        float(sys.argv[4]), 1001, 32, 16)
+        except IndexError:
+            dem_signal = demodulate(sys.argv[2], 1800, 1001, 32, 16)
+            
         decoded_binaries = const2bin(dem_signal)
         start_idx = frameStartDetect(decoded_binaries)
         received_binaries = decoded_binaries[start_idx:start_idx+200*200*2]
         img = bin2img(received_binaries)
+        img = (img*255).astype(np.uint8)
         io.imsave(sys.argv[3], img)
         
     else :
