@@ -8,6 +8,8 @@ Created on Wed May 18 20:21:32 2022
 
 def doc():
     print("\nsyntax : \n\n"
+          
+        "Vibe : a small program to send small pictures using QPSK !\n\n"
         
         "convert an image to 2-bit 200x200 image \n"
         ">> ./vibe.py -tx -i <input_image_name> <output_image_name> \n\n"
@@ -32,13 +34,13 @@ from skimage.transform import resize
 import numpy as np
 
 from scipy.interpolate import interp1d
+from scipy.signal import convolve2d
 
 import commpy
 
 import soundfile as sf
 
 #%% LOAD A PICTURE
-
 
 def squareCropCoordinate(image):
 
@@ -59,7 +61,6 @@ def squareCropCoordinate(image):
         deltaY = int((width - height) / 2)
         return ((0, 0), (deltaY, deltaY), (0, 0))
 
-
 #..............................................................................
 
 
@@ -71,11 +72,10 @@ def loadPicture(filename):
 
 #%% COMPRESS THE PICTURE
 
-
-def palette4bit():
-    return np.array([[[50, 50, 110],
-                      [172, 70, 70],
-                      [80, 182, 80],
+def palette2bit():
+    return np.array([[[32, 26, 102],
+                      [191, 59, 38],
+                      [76, 230, 46],
                       [255, 255, 255]]])/255
 
 #..............................................................................
@@ -102,6 +102,9 @@ def dithering(image, palette, bias=2):
     # using dithering (the atkinson algorithm)
 
     output = np.copy(image)
+    
+    # slight decontrasting
+    output = output*0.8 + 0.1
 
     for y in np.arange(0, output.shape[1] - 2, 1):
         for x in np.arange(2, output.shape[0] - 2, 1):
@@ -139,13 +142,9 @@ def im2bin(dithered_image):
     
     output = np.zeros(im.size)
     
-    # important :
-    # 50  = palette[0] = (blue black)
-    # 172 = palette[1] = (medium red)
-    # 80  = palette[2] = (light green)
-    # 255 = palette[3] = (pure white)
+    c = (palette2bit()*255).astype(int)
     
-    color2bit = {50:0, 172:1, 80:2, 255:3}
+    color2bit = {c[0,0,0]:0, c[0,1,0]:1, c[0,2,0]:2, c[0,3,0]:3}
     
     for i in range(im.size):
         output[i] = color2bit[im[i]]
@@ -159,13 +158,40 @@ def im2bin(dithered_image):
 
 #..............................................................................
 
+def barkerSeq(nb, inverted = False):
+    if nb == 2:
+        out = np.array([1,0])
+    elif nb == 3:
+        out = np.array([1,1,0])
+    elif nb == 4:
+        out = np.array([1,1,0,1])
+    elif nb == 5:
+        out = np.array([1,1,1,0,1])
+    elif nb == 7:
+        out = np.array([1,1,1,0,0,1,0])
+    elif nb == 11:
+        out = np.array([1,1,1,0,0,0,1,0,0,1,0])
+    else :
+        out = np.array([1,1,1,1,1,0,0,1,1,0,1,0,1])
+        
+    if inverted:
+        out = -out +1
+
+    return out
+
+
+#..............................................................................
+
+
 def framing(binaries):
     # freq and time synchronisation
-    sync_seq = (np.linspace(0,1000,1501)%2).astype(np.uint8)
+    sync_seq = np.zeros(0)
+    code = barkerSeq(7, True)
+    for i in range(int(3000/7)):
+        sync_seq = np.append(sync_seq, code)
     
-    # frame synchronisation
-    barker_seq = np.array([1,1,1,1,1,0,0,1,1,0,1,0,1]).astype(np.uint8)
-    return np.concatenate((sync_seq, barker_seq, binaries))
+    return np.concatenate((sync_seq, barkerSeq(7, False), binaries))
+    # return np.concatenate((sync_seq, barker_seq))
 
 #%% MODULATE THE MESSAGE ONTO SOUND
 
@@ -240,7 +266,7 @@ def demodulate(filename, fTuning, nb_taps, sps, subSteps=0):
     data = polyphaseClockSync(data, sps*(subSteps+1))
     
     # normalize
-    data /= np.mean(np.abs(data[1000:]))
+    data /= np.mean(np.abs(data[200:]))
     
     # costa loop
     data = costaLoop(data, sps*(subSteps+1))
@@ -277,7 +303,7 @@ def polyphaseClockSync(data, sps):
         y = (out[i_out] - out[i_out-2]) * np.conj(out_rail[i_out-1])
         
         mm_val = np.real(y - x)
-        mu += sps + 0.3*mm_val
+        mu += sps + 0.05*mm_val
         
         # round down to nearest int since we are using it as an index
         i_in += int(np.floor(mu))
@@ -300,8 +326,11 @@ def costaLoop(data, samplerate):
     
     # These next two params is what to adjust,
     # to make the feedback loop faster or slower (which impacts stability)
-    alpha = 0.132
-    beta = 0.00932
+    # alpha = 0.132
+    # beta = 0.00932
+    
+    alpha = 0.4
+    beta = 0.3
     
     out = np.zeros(N, dtype=np.complex128)
     for i in range(N):
@@ -347,7 +376,7 @@ def const2bin(dem_signal):
 
 
 def frameStartDetect(received_bin):
-    barker_seq = np.array([1,1,1,1,1,0,0,1,1,0,1,0,1])
+    barker_seq = barkerSeq(7, False)
     
     out = np.zeros(len(received_bin))
     
@@ -365,7 +394,7 @@ def frameStartDetect(received_bin):
 #%% DECODE THE PICTURE
 
 def bin2img(received_binaries):
-    palette = palette4bit()
+    palette = palette2bit()
     img = np.zeros((200,200,3))
     
     received_binaries = np.reshape(received_binaries, (40000,2))
@@ -379,6 +408,14 @@ def bin2img(received_binaries):
         for y in range(200):
             img[x,y,:] = palette[0,color_index[x,y],:]
     
+    blur = np.array([[0,2,1,1],
+                      [1,1,1,0],
+                      [0,1,0,0]])/8
+    
+    img[:,:,0] = convolve2d(img[:,:,0], blur, 'same')
+    img[:,:,1] = convolve2d(img[:,:,1], blur, 'same')
+    img[:,:,2] = convolve2d(img[:,:,2], blur, 'same')
+    
     return img
 
 
@@ -390,14 +427,14 @@ if __name__ == "__main__":
     if sys.argv[1] == '-tx':
         if sys.argv[2] == '-i':
             image = loadPicture(sys.argv[3])
-            dithered_image = dithering(image, palette4bit())
+            dithered_image = dithering(image, palette2bit())
             dithered_image = (dithered_image*255).astype(np.uint8)
             io.imsave(sys.argv[4],dithered_image)
     
     # convert an image to QPSK sound signal
         elif sys.argv[2] == '-s':
             image = loadPicture(sys.argv[3])
-            dithered_image = dithering(image, palette4bit())
+            dithered_image = dithering(image, palette2bit())
             binaries = im2bin(dithered_image)
             message = framing(binaries)
             pulses = bin2pulse(message)
@@ -416,14 +453,21 @@ if __name__ == "__main__":
             if sys.argv[4]:
                 print('central frequency set to : {}Hz'.format(sys.argv[4]))
                 dem_signal = demodulate(sys.argv[2],
-                                        float(sys.argv[4]), 1001, 32, 16)
+                                        float(sys.argv[4]), 1001, 32, 32)
         except IndexError:
-            dem_signal = demodulate(sys.argv[2], 1800, 1001, 32, 16)
+            dem_signal = demodulate(sys.argv[2], 1800, 1001, 32, 32)
             
         decoded_binaries = const2bin(dem_signal)
         start_idx = frameStartDetect(decoded_binaries)
         received_binaries = decoded_binaries[start_idx:start_idx+200*200*2]
-        img = bin2img(received_binaries)
+        try :
+            img = bin2img(received_binaries)
+        except ValueError:
+            print("\nbeginning of data not found !\n"
+                  "the decoder may not be properly tuned.\n"
+                  "you can set the center frequency with :\n"
+                  ">> ./vibe.py -rx <input_soundFile_name> <image_name> <center_frequency> \n")
+            sys.exit()
         img = (img*255).astype(np.uint8)
         io.imsave(sys.argv[3], img)
         
