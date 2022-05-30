@@ -41,21 +41,24 @@ import soundfile as sf
 
 
 def squareCropCoordinate(image):
-    bbox = (0, 0, image.shape[0], image.shape[1])
 
-    # is the image allready square ?
-    if bbox[2] == bbox[3]:
-        return bbox
+    height = image.shape[0]
+    width = image.shape[1]
 
-    # is the image in landscape mode ?
-    isLandscape = bbox[2] > bbox[3]
+    # is the image already square ?
+    if height == width:
+        return ((0, 0), (0, 0), (0, 0))
 
-    if isLandscape:
-        deltaX = int((bbox[2] - bbox[3]) / 2)
+    # Is the image in portrait or landscape mode
+    is_portrait = height > width
+
+    if is_portrait:
+        deltaX = int((height - width) / 2)
         return ((deltaX, deltaX), (0, 0), (0, 0))
     else:
-        deltaY = int((bbox[3] - bbox[2]) / 2)
+        deltaY = int((width - height) / 2)
         return ((0, 0), (deltaY, deltaY), (0, 0))
+
 
 #..............................................................................
 
