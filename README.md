@@ -31,7 +31,7 @@ then :
 
 ## Backstory :
 
-I'm a student interested about everything telecom and espacially radio communications. I am a certified radio-ham (F4JBO) and I as such, intrigued by SSTV and digital modes.
+I'm a student interested about everything telecom and especially radio communications. I am a certified radio-ham (F4JBO) and as such, intrigued by SSTV and digital modes.
 
 I rapidly wanted to try to find a new way to send picture in a more effective way using more modern technique than SSTV. I explored lots of different modulation technique, ways of compressing image etc...
 
